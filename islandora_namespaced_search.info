@@ -1,0 +1,5 @@
+name = Islandora Namespaced search
+description = Filters search to namespace prefix
+core = 7.x
+package = Islandora Utilities
+dependencies[] = islandora

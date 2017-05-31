@@ -1,0 +1,46 @@
+<?php
+// This entire .module is ripped from islandora_collection_search.
+
+// TODO: put this search in a block or sth that can be added to appropriate pages.
+// TODO: checkboxes or multiselect UI control in the form.
+// TODO: Figure out how to get a discreet list of namespaces (ideally without having to create a list in the db) (admin settings).
+// TODO: (later) figure out how to cache the results of the above search ^
+
+
+function islandora_namespaced_search_islandora_solr_query($islandora_solr_query) {
+  // Query param 'ns' gets set on form submission so that we can use it here.
+  if(!isset($_GET['ns'])){
+    return;
+  }
+  // Account for multiple namespaces: foreach ($names as $spaces) { //create filter, add to solrParams}
+  $namespaces = $_GET['ns'];
+
+  $filter = format_string('!field:!value', array(
+    '!field' => 'PID',
+    '!value' => $namespaces,
+  ));
+  $islandora_solr_query->solrParams['fq'][] = $filter;
+}
+
+function islandora_namespaced_search_form_islandora_solr_advanced_search_form_alter(&$form, &$form_state) {
+
+  $form['namespaces'] = array(
+    '#type' => 'select',
+    // This is super-rough- I'm array-flipping here rather than re-type the array correctly (not backwards).
+    // Rather than hard-code the options array, use a helper function to build it, probably from the results of a 
+    // sparql query that returns the set of namespaces...
+    '#options' => array_flip(array('all' => '*', 'latech' => 'latech*', 'uno' => 'uno*' , 'lsu' => 'lsu*', 'mcneese'=> 'mcneese*')),
+    '#weight' => 5,
+  );
+  $form['controls']['#weight'] = 6;
+  // Gives us a chance to add 'ns' to the URL for use in altering the query (above).
+  $form['#submit'][] = 'islandora_namespaced_search_append_ns';
+}
+
+
+function islandora_namespaced_search_append_ns($form, &$form_state) {
+  // set the 'ns' query param to be fetched later from $_GET
+  if ($form_state['values']['namespaces'] != 'all') {
+    $form_state['redirect'][1]['query']['ns'] = $form_state['values']['namespaces'];
+  }
+}
