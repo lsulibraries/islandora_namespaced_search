@@ -29,6 +29,9 @@ function islandora_namespaced_search_form_islandora_solr_advanced_search_form_al
     // This is super-rough- I'm array-flipping here rather than re-type the array correctly (not backwards).
     // Rather than hard-code the options array, use a helper function to build it, probably from the results of a 
     // sparql query that returns the set of namespaces...
+
+   //
+
     '#options' => array_flip(array('all' => '*', 'latech' => 'latech*', 'uno' => 'uno*' , 'lsu' => 'lsu*', 'mcneese'=> 'mcneese*')),
     '#weight' => 5,
   );
@@ -43,4 +46,25 @@ function islandora_namespaced_search_append_ns($form, &$form_state) {
   if ($form_state['values']['namespaces'] != 'all') {
     $form_state['redirect'][1]['query']['ns'] = $form_state['values']['namespaces'];
   }
+}
+
+dpm(get_all_collections());
+
+function get_all_collections(){
+  $connection = islandora_get_tuque_connection();
+  if ($connection) {
+    $query = <<<EOQ
+  SELECT ?pid FROM <#ri>
+  WHERE { 
+    ?pid <fedora-rels-ext:isMemberOfCollection> <info:fedora/islandora:root>
+  }
+EOQ;
+ $results = $connection->repository->ri->sparqlQuery($query);
+  }
+  $objects = array();
+ foreach($results as $key => $value){
+   $plode = explode('-', $results[$key]['pid']['value']);
+   array_push($objects, $plode[0]);
+ }
+ return array_unique($objects);
 }
