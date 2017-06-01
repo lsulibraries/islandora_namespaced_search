@@ -6,6 +6,8 @@
 
 // TODO: Figure out how to get a discreet list of namespaces (ideally without having to create a list in the db) (admin settings).
 // ##DONE see get_all_collections_inst function below
+// ##ADDED lsu => lsu* and all => '*' type stuff
+
 
 // TODO: (later) figure out how to cache the results of the above search ^
 
@@ -52,7 +54,6 @@ function islandora_namespaced_search_append_ns($form, &$form_state) {
   }
 }
 
-dpm(get_all_collections_inst());
 
 function get_all_collections_inst(){
   $connection = islandora_get_tuque_connection();
