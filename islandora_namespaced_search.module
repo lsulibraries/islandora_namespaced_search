@@ -3,7 +3,10 @@
 
 // TODO: put this search in a block or sth that can be added to appropriate pages.
 // TODO: checkboxes or multiselect UI control in the form.
+
 // TODO: Figure out how to get a discreet list of namespaces (ideally without having to create a list in the db) (admin settings).
+// ##DONE see get_all_collections_inst function below
+
 // TODO: (later) figure out how to cache the results of the above search ^
 
 
@@ -32,7 +35,8 @@ function islandora_namespaced_search_form_islandora_solr_advanced_search_form_al
 
    //
 
-    '#options' => array_flip(array('all' => '*', 'latech' => 'latech*', 'uno' => 'uno*' , 'lsu' => 'lsu*', 'mcneese'=> 'mcneese*')),
+    //'#options' => array_flip(array('all' => '*', 'latech' => 'latech*', 'uno' => 'uno*' , 'lsu' => 'lsu*', 'mcneese'=> 'mcneese*')),
+    '#options' => array_flip(get_all_collections_inst()),
     '#weight' => 5,
   );
   $form['controls']['#weight'] = 6;
@@ -48,9 +52,9 @@ function islandora_namespaced_search_append_ns($form, &$form_state) {
   }
 }
 
-dpm(get_all_collections());
+dpm(get_all_collections_inst());
 
-function get_all_collections(){
+function get_all_collections_inst(){
   $connection = islandora_get_tuque_connection();
   if ($connection) {
     $query = <<<EOQ
@@ -64,7 +68,8 @@ EOQ;
   $objects = array();
  foreach($results as $key => $value){
    $plode = explode('-', $results[$key]['pid']['value']);
-   array_push($objects, $plode[0]);
+   $objects[$plode[0]] =  $plode[0] . '*';
  }
+ $objects['all'] = '*';
  return array_unique($objects);
 }
