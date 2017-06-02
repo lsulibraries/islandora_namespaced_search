@@ -30,7 +30,7 @@ function islandora_namespaced_search_islandora_solr_query($islandora_solr_query)
 function islandora_namespaced_search_form_islandora_solr_advanced_search_form_alter(&$form, &$form_state) {
 
   $form['namespaces'] = array(
-    '#type' => 'select',
+    '#type' => 'checkboxes',
     // This is super-rough- I'm array-flipping here rather than re-type the array correctly (not backwards).
     // Rather than hard-code the options array, use a helper function to build it, probably from the results of a 
     // sparql query that returns the set of namespaces...
