@@ -11,14 +11,16 @@ function islandora_namespaced_search_islandora_solr_query($islandora_solr_query)
   if(!isset($_GET['ns'])){
     return;
   }
-  // Account for multiple namespaces: foreach ($names as $spaces) { //create filter, add to solrParams}
   $namespaces = $_GET['ns'];
-
-  $filter = format_string('!field:!value', array(
-    '!field' => 'PID',
-    '!value' => $namespaces,
-  ));
+  foreach($namespaces as $namespace){
+    if($namespace != '0'){
+      $filter = format_string('!field:!value', array(
+        '!field' => 'PID',
+        '!value' => $namespace,
+      ));
   $islandora_solr_query->solrParams['fq'][] = $filter;
+    }
+  }
 }
 
 function islandora_namespaced_search_form_islandora_solr_advanced_search_form_alter(&$form, &$form_state) {
@@ -40,6 +42,7 @@ function islandora_namespaced_search_form_islandora_solr_advanced_search_form_al
 function islandora_namespaced_search_append_ns($form, &$form_state) {
   // set the 'ns' query param to be fetched later from $_GET
   //we have to unpack the array of checkbox items here somehow...
+//  dpm($form_state['values']['namespaces']);
   if ($form_state['values']['namespaces'] != 'all') {
     $form_state['redirect'][1]['query']['ns'] = $form_state['values']['namespaces'];
   }
