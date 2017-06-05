@@ -2,9 +2,12 @@
 // This entire .module is ripped from islandora_collection_search.
 
 // TODO: put this search in a block or sth that can be added to appropriate pages.
+// Module currently exists in advanced search block...
 
 // TODO: (later) figure out how to cache the results of the above search ^
-
+//file_put_contents("cache_file", serialize($myArray));
+//$myArray = unserialize(file_get_contents("cache_file"));
+//check if cache_file exists
 
 function islandora_namespaced_search_islandora_solr_query($islandora_solr_query) {
   // Query param 'ns' gets set on form submission so that we can use it here.
