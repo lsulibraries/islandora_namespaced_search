@@ -26,6 +26,14 @@ function islandora_namespaced_search_islandora_solr_query($islandora_solr_query)
   }
 }
 
+//how to update cache if new institution is added
+if('cache_file'){
+  //dpm('cache extant');
+}
+else{
+  file_put_contents("cache_file", serialize(array_flip(get_all_collections_inst())));
+}
+
 function islandora_namespaced_search_form_islandora_solr_advanced_search_form_alter(&$form, &$form_state) {
 
   $form['namespaces'] = array(
@@ -33,7 +41,7 @@ function islandora_namespaced_search_form_islandora_solr_advanced_search_form_al
     '#type' => 'checkboxes',
     // This is super-rough- I'm array-flipping here rather than re-type the array correctly (not backwards).
 
-    '#options' => array_flip(get_all_collections_inst()),
+    '#options' => unserialize(file_get_contents('cache_file')),
     '#weight' => 5,
   );
   $form['controls']['#weight'] = 6;
