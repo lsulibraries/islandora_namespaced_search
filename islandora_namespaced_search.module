@@ -21,12 +21,18 @@ function islandora_namespaced_search_islandora_solr_query($islandora_solr_query)
   }
 }
 
+//CACHE Section
 //how to update cache if new institution is added?
+//faking it now...
 if('cache_file'){
- //dpm('cache extant');
+ //dpm('cache extant, checking for updates...'); //note arrayflip below...
+ if(unserialize(file_get_contents('cache_file')) === array_flip(get_all_collections_inst())){
+   //dpm('cache is the same');
+ }
 }
 else{
   //array flip occurs here.
+  //builds cache_file
   file_put_contents("cache_file", serialize(array_flip(get_all_collections_inst())));
 }
 
@@ -54,9 +60,8 @@ function islandora_namespaced_search_append_ns($form, &$form_state) {
   // set the 'ns' query param to be fetched later from $_GET
   //we have to unpack the array of checkbox items here somehow...
   // right now I'm not convinced it can search multiple namespaces as OR, i think it is requiring that both be satisfied... eff
-  if($form_state['values']['namespaces']['*'] == 0) {
-    dpm('all keys to zero'); //not triggered even when if is satisfied
-    $form_state['redirect'][1]['query']['ns'] = $form_state['values']['namespaces'];
+  if($form_state['values']['namespaces']['*'] === 0) {
+   $form_state['redirect'][1]['query']['ns'] = $form_state['values']['namespaces'];
   }
     dpm($form_state);
   
