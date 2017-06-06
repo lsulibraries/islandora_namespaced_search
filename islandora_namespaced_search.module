@@ -13,7 +13,7 @@ function islandora_namespaced_search_islandora_solr_query($islandora_solr_query)
   }
   $namespaces = $_GET['ns'];
   foreach($namespaces as $inst){
-    if($namespace != '0'){
+    if($inst != '0'){
       $filter = format_string('!field:!value', array(
         '!field' => 'PID',
         '!value' => $inst,
