@@ -21,22 +21,25 @@ function islandora_namespaced_search_islandora_solr_query($islandora_solr_query)
   }
 }
 
-//how to update cache if new institution is added
+//how to update cache if new institution is added?
 if('cache_file'){
-  //dpm('cache extant');
+ //dpm('cache extant');
 }
 else{
+  //array flip occurs here.
   file_put_contents("cache_file", serialize(array_flip(get_all_collections_inst())));
 }
 
 function islandora_namespaced_search_form_islandora_solr_advanced_search_form_alter(&$form, &$form_state) {
-
+  $ns_array = get_all_collections_inst();
+  $pruned_ns = array();
+  foreach($ns_array as $key => $value){
+    $pruned_ns[$key] = $value;
+  }
   $form['namespaces'] = array(
     '#title' => 'Search within institutions',
     '#type' => 'checkboxes',
-    // This is super-rough- I'm array-flipping here rather than re-type the array correctly (not backwards).
-
-    '#options' => unserialize(file_get_contents('cache_file')),
+    '#options' => array_flip($pruned_ns), //array_flip(get_all_collections_inst()), //unserialize(file_get_contents('cache_file')),
     '#weight' => 5,
   );
   $form['controls']['#weight'] = 6;
@@ -45,13 +48,18 @@ function islandora_namespaced_search_form_islandora_solr_advanced_search_form_al
 }
 
 
+
+
 function islandora_namespaced_search_append_ns($form, &$form_state) {
   // set the 'ns' query param to be fetched later from $_GET
   //we have to unpack the array of checkbox items here somehow...
-//  dpm($form_state['values']['namespaces']);
-  if ($form_state['values']['namespaces'] != 'all') {
+  // right now I'm not convinced it can search multiple namespaces as OR, i think it is requiring that both be satisfied... eff
+  if($form_state['values']['namespaces']['*'] == 0) {
+    dpm('all keys to zero'); //not triggered even when if is satisfied
     $form_state['redirect'][1]['query']['ns'] = $form_state['values']['namespaces'];
   }
+    dpm($form_state);
+  
 }
 
 
