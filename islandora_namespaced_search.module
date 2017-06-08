@@ -10,15 +10,16 @@ function islandora_namespaced_search_islandora_solr_query($islandora_solr_query)
     return;
   }
   $namespaces = $_GET['ns'];
-  foreach($namespaces as $inst){
-    if($inst != '0'){
-      $filter = format_string('!field:!value', array(
-        '!field' => 'PID',
-        '!value' => $inst,
-      ));
-  $islandora_solr_query->solrParams['fq'][] = $filter;
-    }
+  $filtered_ns = array_filter($namespaces);
+
+  foreach ($filtered as $inst) {
+
   }
+  $filter = format_string('!field:!value', array(
+    '!field' => 'PID',
+    '!value' => $inst,
+  ));
+  $islandora_solr_query->solrParams['fq'][] = $filter;
 }
 
 //CACHE Section
