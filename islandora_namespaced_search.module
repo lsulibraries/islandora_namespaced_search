@@ -20,30 +20,22 @@ function islandora_namespaced_search_islandora_solr_query($islandora_solr_query)
     return;
   }
   $namespaces = $_GET['ns'];
-  foreach($namespaces as $inst){
-    if($inst != '0'){
-      $filter = format_string('!field:!value', array(
-        '!field' => 'PID',
-        '!value' => $inst,
-      ));
-  $islandora_solr_query->solrParams['fq'][] = $filter;
-    }
-  }
-}
+  $filtered_ns = array_values(array_filter($namespaces));
 
-//CACHE Section
-//how to update cache if new institution is added?
-//faking it now...
-if('cache_file'){
- //dpm('cache extant, checking for updates...'); //note arrayflip below...
- if(unserialize(file_get_contents('cache_file')) === array_flip(get_all_collections_inst())){
-   //dpm('cache is the same');
- }
-}
-else{
-  //array flip occurs here.
-  //builds cache_file
-  file_put_contents("cache_file", serialize(array_flip(get_all_collections_inst())));
+  if (count($filtered_ns) > 1) {
+    $ns_filters = array();
+    foreach ($filtered_ns as $ns) {
+      $ns_filters[] = "PID:$ns";
+    }
+
+    $filter = implode(' OR ', $ns_filters);
+  } else {
+    $filter = format_string('!field:!value', array(
+      '!field' => 'PID',
+      '!value' => array_shift($filtered_ns),
+    ));
+  }
+  $islandora_solr_query->solrParams['fq'][] = $filter;
 }
 
 function islandora_namespaced_search_form_islandora_solr_advanced_search_form_alter(&$form, &$form_state) {
@@ -67,14 +59,13 @@ function islandora_namespaced_search_form_islandora_solr_advanced_search_form_al
 
 
 function islandora_namespaced_search_append_ns($form, &$form_state) {
-  // set the 'ns' query param to be fetched later from $_GET
-  //we have to unpack the array of checkbox items here somehow...
-  // right now I'm not convinced it can search multiple namespaces as OR, i think it is requiring that both be satisfied... eff
-  if($form_state['values']['namespaces']['*'] === 0) {
-   $form_state['redirect'][1]['query']['ns'] = $form_state['values']['namespaces'];
+
+  // Set the 'ns' query param to be fetched later from $_GET.
+  $ns_selected = array_filter($form_state['values']['namespaces']);
+
+  if (count($ns_selected) > 0) {
+    $form_state['redirect'][1]['query']['ns'] = $ns_selected;
   }
-    dpm($form_state);
-  
 }
 
 
@@ -94,9 +85,36 @@ EOQ;
    $plode = explode('-', $results[$key]['pid']['value']);
    $objects[$plode[0]] =  $plode[0] . '*';
  }
- $objects['all'] = '*';
+ //$objects['all'] = '*';
  return array_unique($objects);
 }
+
+/**
+ * Implements hook_block_info().
+ */
+function islandora_namespaced_search_block_info() {
+  $blocks['islandora_namespaced_search'] = array(
+    'info' => t('Islandora Namespaced Search'),
+    'cache' => DRUPAL_NO_CACHE,
+  );
+  return $blocks;
+}
+
+/**
+ * Implements hook_block_view().
+ */
+function islandora_namespaced_search_block_view($delta = '') {
+  $block = array();
+  switch ($delta) {
+    case 'islandora_namespaced_search':
+      module_load_include('inc', 'islandora_namespaced_search', 'includes/search.form');
+      $block['subject'] = t('Search this institution');
+      $block['content'] = drupal_get_form('islandora_namespaced_search_form');
+      break;
+  }
+  return $block;
+}  
+  
 
 function islandora_namespaced_search_form_alter(&$form, &$form_state, $form_id){
     
