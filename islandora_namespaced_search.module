@@ -2,34 +2,60 @@
 // This entire .module is ripped from islandora_collection_search.
 
 // TODO: put this search in a block or sth that can be added to appropriate pages.
+// How blocks work...
+
 // TODO: checkboxes or multiselect UI control in the form.
+
 // TODO: Figure out how to get a discreet list of namespaces (ideally without having to create a list in the db) (admin settings).
+// ##DONE see get_all_collections_inst function below
+// ##ADDED lsu => lsu* and all => '*' type stuff
+
 // TODO: (later) figure out how to cache the results of the above search ^
 
+// Module currently exists in advanced search block...
 
 function islandora_namespaced_search_islandora_solr_query($islandora_solr_query) {
   // Query param 'ns' gets set on form submission so that we can use it here.
   if(!isset($_GET['ns'])){
     return;
   }
-  // Account for multiple namespaces: foreach ($names as $spaces) { //create filter, add to solrParams}
   $namespaces = $_GET['ns'];
-
-  $filter = format_string('!field:!value', array(
-    '!field' => 'PID',
-    '!value' => $namespaces,
-  ));
+  foreach($namespaces as $inst){
+    if($inst != '0'){
+      $filter = format_string('!field:!value', array(
+        '!field' => 'PID',
+        '!value' => $inst,
+      ));
   $islandora_solr_query->solrParams['fq'][] = $filter;
+    }
+  }
+}
+
+//CACHE Section
+//how to update cache if new institution is added?
+//faking it now...
+if('cache_file'){
+ //dpm('cache extant, checking for updates...'); //note arrayflip below...
+ if(unserialize(file_get_contents('cache_file')) === array_flip(get_all_collections_inst())){
+   //dpm('cache is the same');
+ }
+}
+else{
+  //array flip occurs here.
+  //builds cache_file
+  file_put_contents("cache_file", serialize(array_flip(get_all_collections_inst())));
 }
 
 function islandora_namespaced_search_form_islandora_solr_advanced_search_form_alter(&$form, &$form_state) {
-
+  $ns_array = get_all_collections_inst();
+  $pruned_ns = array();
+  foreach($ns_array as $key => $value){
+    $pruned_ns[$key] = $value;
+  }
   $form['namespaces'] = array(
-    '#type' => 'select',
-    // This is super-rough- I'm array-flipping here rather than re-type the array correctly (not backwards).
-    // Rather than hard-code the options array, use a helper function to build it, probably from the results of a 
-    // sparql query that returns the set of namespaces...
-    '#options' => array_flip(array('all' => '*', 'latech' => 'latech*', 'uno' => 'uno*' , 'lsu' => 'lsu*', 'mcneese'=> 'mcneese*')),
+    '#title' => 'Search within institutions',
+    '#type' => 'checkboxes',
+    '#options' => array_flip($pruned_ns), //array_flip(get_all_collections_inst()), //unserialize(file_get_contents('cache_file')),
     '#weight' => 5,
   );
   $form['controls']['#weight'] = 6;
@@ -38,9 +64,83 @@ function islandora_namespaced_search_form_islandora_solr_advanced_search_form_al
 }
 
 
+
+
 function islandora_namespaced_search_append_ns($form, &$form_state) {
   // set the 'ns' query param to be fetched later from $_GET
-  if ($form_state['values']['namespaces'] != 'all') {
-    $form_state['redirect'][1]['query']['ns'] = $form_state['values']['namespaces'];
+  //we have to unpack the array of checkbox items here somehow...
+  // right now I'm not convinced it can search multiple namespaces as OR, i think it is requiring that both be satisfied... eff
+  if($form_state['values']['namespaces']['*'] === 0) {
+   $form_state['redirect'][1]['query']['ns'] = $form_state['values']['namespaces'];
   }
+    dpm($form_state);
+  
+}
+
+
+function get_all_collections_inst(){
+  $connection = islandora_get_tuque_connection();
+  if ($connection) {
+    $query = <<<EOQ
+  SELECT ?pid FROM <#ri>
+  WHERE { 
+    ?pid <fedora-rels-ext:isMemberOfCollection> <info:fedora/islandora:root>
+  }
+EOQ;
+ $results = $connection->repository->ri->sparqlQuery($query);
+  }
+  $objects = array();
+ foreach($results as $key => $value){
+   $plode = explode('-', $results[$key]['pid']['value']);
+   $objects[$plode[0]] =  $plode[0] . '*';
+ }
+ $objects['all'] = '*';
+ return array_unique($objects);
+}
+
+function islandora_namespaced_search_form_alter(&$form, &$form_state, $form_id){
+    
+    if($form_id != 'islandora_basic_collection_create_child_collection_form'){       
+        return;
+    }
+  $user = user_uid_optional_load();
+  $user_namespace = $user->field_namespace;  
+  //if user has no namespace restrictons
+    if(empty($user_namespace)){
+    $input_choice = 'textfield';
+    $options_or_default = '#default_value';
+    $default_namespace = 'islandora';
+    $inst_ns_description = "You have no namespace associated with your user account. Please provide an institutional prefix that matches this collection's owner";
+    $user_namespace_options = $default_namespace;
+  }
+  //otherwise the user has one or more namespaces
+  else{
+    if(count($user_namespace['und']) >= 1){
+      $input_choice = 'select';
+      $options_or_default = '#options';
+      $inst_ns_description = "choose an institutional prefix for the namespace of this collection.";
+      $user_namespace_options = array();
+      foreach($user_namespace['und'] as $key => $value ){
+        $user_namespace_options[$value['value']] = $value['value'];
+      }
+    }
+  }
+  $form['pid']['#access'] = FALSE;
+  $form['pid']['#element_validate'][] = 'collection_dammit'; 
+  $form['institution-prefix'] = array(
+      '#type' => $input_choice,
+      '#title' => t('Collection PID Prefix (Unique to Institution)'),
+      '#description' => t($inst_ns_description),
+      $options_or_default => $user_namespace_options,
+    );
+  $form['collection-alias']  = array(
+      '#type' => 'textfield',
+      '#description' => t("Enter a Collection alias, as part of this collection's PID"),
+      '#title' => t('Collection Alias (Unique to collection)'),  
+    );
+$form['#validate'][] = 'collection_dammit';
+$form_state['validate_handlers'][] = 'collection_dammit';
+}
+function collection_dammit($form, &$form_state){
+     $form_state['values']['pid'] = $form_state['values']['institution-prefix'] . '-' . $form_state['values']['collection-alias'] . ':collection';
 }
