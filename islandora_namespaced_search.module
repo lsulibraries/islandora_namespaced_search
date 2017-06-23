@@ -12,34 +12,50 @@
 
 // TODO: (later) figure out how to cache the results of the above search ^
 
+// Module currently exists in advanced search block...
 
 function islandora_namespaced_search_islandora_solr_query($islandora_solr_query) {
   // Query param 'ns' gets set on form submission so that we can use it here.
   if(!isset($_GET['ns'])){
     return;
   }
-  // Account for multiple namespaces: foreach ($names as $spaces) { //create filter, add to solrParams}
   $namespaces = $_GET['ns'];
-
-  $filter = format_string('!field:!value', array(
-    '!field' => 'PID',
-    '!value' => $namespaces,
-  ));
+  foreach($namespaces as $inst){
+    if($inst != '0'){
+      $filter = format_string('!field:!value', array(
+        '!field' => 'PID',
+        '!value' => $inst,
+      ));
   $islandora_solr_query->solrParams['fq'][] = $filter;
+    }
+  }
+}
+
+//CACHE Section
+//how to update cache if new institution is added?
+//faking it now...
+if('cache_file'){
+ //dpm('cache extant, checking for updates...'); //note arrayflip below...
+ if(unserialize(file_get_contents('cache_file')) === array_flip(get_all_collections_inst())){
+   //dpm('cache is the same');
+ }
+}
+else{
+  //array flip occurs here.
+  //builds cache_file
+  file_put_contents("cache_file", serialize(array_flip(get_all_collections_inst())));
 }
 
 function islandora_namespaced_search_form_islandora_solr_advanced_search_form_alter(&$form, &$form_state) {
-
+  $ns_array = get_all_collections_inst();
+  $pruned_ns = array();
+  foreach($ns_array as $key => $value){
+    $pruned_ns[$key] = $value;
+  }
   $form['namespaces'] = array(
-    '#type' => 'select',
-    // This is super-rough- I'm array-flipping here rather than re-type the array correctly (not backwards).
-    // Rather than hard-code the options array, use a helper function to build it, probably from the results of a 
-    // sparql query that returns the set of namespaces...
-
-   //
-
-    //'#options' => array_flip(array('all' => '*', 'latech' => 'latech*', 'uno' => 'uno*' , 'lsu' => 'lsu*', 'mcneese'=> 'mcneese*')),
-    '#options' => array_flip(get_all_collections_inst()),
+    '#title' => 'Search within institutions',
+    '#type' => 'checkboxes',
+    '#options' => array_flip($pruned_ns), //array_flip(get_all_collections_inst()), //unserialize(file_get_contents('cache_file')),
     '#weight' => 5,
   );
   $form['controls']['#weight'] = 6;
@@ -48,11 +64,17 @@ function islandora_namespaced_search_form_islandora_solr_advanced_search_form_al
 }
 
 
+
+
 function islandora_namespaced_search_append_ns($form, &$form_state) {
   // set the 'ns' query param to be fetched later from $_GET
-  if ($form_state['values']['namespaces'] != 'all') {
-    $form_state['redirect'][1]['query']['ns'] = $form_state['values']['namespaces'];
+  //we have to unpack the array of checkbox items here somehow...
+  // right now I'm not convinced it can search multiple namespaces as OR, i think it is requiring that both be satisfied... eff
+  if($form_state['values']['namespaces']['*'] === 0) {
+   $form_state['redirect'][1]['query']['ns'] = $form_state['values']['namespaces'];
   }
+    dpm($form_state);
+  
 }
 
 
